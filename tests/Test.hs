@@ -25,7 +25,7 @@ module Main where
 
 -- | 'tasty' takes care of managing all of our test cases, running them,
 -- checking results and then providing us with a report.
-import           Test.Tasty         (defaultMain, testGroup)
+import           Test.Tasty         (defaultMain, testGroup, TestTree)
 
 -- | 'tasty-wai' makes it easier to create requests to submit to our
 -- application, and provides some helper functions for checking our assertions.
@@ -46,14 +46,42 @@ import           Network.HTTP.Types as HTTP
 -- can test your work as you progress.
 import qualified Level02.Core       as Core
 
-main :: IO ()
-main = defaultMain $ testGroup "Applied FP Course - Tests"
-
+testEndpointList :: TestTree
+testEndpointList = testGroup "/list endpoint"
   [ testWai Core.app "List Topics" $
-      get "fudge/view" >>= assertStatus' HTTP.status200
-
-  , testWai Core.app "Empty Input" $ do
-      resp <- post "fudge/add" ""
-      assertStatus' HTTP.status400 resp
-      assertBody "Empty Comment Text" resp
+      get "/list" >>= assertStatus' HTTP.status200
   ]
+
+testEndpointViewTopic :: TestTree
+testEndpointViewTopic = testGroup "/<topic>/view endpoint"
+  [ testWai Core.app "View Topic" $
+    get "fudge/view" >>= assertStatus' HTTP.status200
+  , testWai Core.app "Empty Topic" $ do
+      resp <- get "//view"
+      assertStatus' HTTP.status400 resp
+      assertBody "Invalid topic: Topic cannot be empty" resp
+  ]
+
+testEndpointAddTopic :: TestTree
+testEndpointAddTopic = testGroup "/<topic>/add endpoint"
+  [ testWai Core.app "Add Comment" $
+    post "fudge/add" "first!" >>= assertStatus' HTTP.status200
+  , testWai Core.app "Empty Input" $ do
+      resp <- post "/fudge/add" ""
+      assertStatus' HTTP.status400 resp
+      assertBody "Invalid comment text: Comment text cannot be empty" resp
+  , testWai Core.app "Empty Topic" $ do
+      resp <- post "//add" ""
+      assertStatus' HTTP.status400 resp
+      assertBody "Invalid topic: Topic cannot be empty" resp
+  ]
+
+tests = testGroup "Applied FP Course - Tests"
+  [
+    testEndpointList,
+    testEndpointViewTopic,
+    testEndpointAddTopic
+  ]
+
+main :: IO ()
+main = defaultMain tests
