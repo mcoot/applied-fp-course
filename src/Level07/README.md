@@ -13,6 +13,7 @@ Since we already have an AppM type, we're extending with more functionality,
 this is what is known as 'stacking' monad transformers.
 
 The steps for this level:
+
 1) ``src/Level07/AppM.hs``
 2) ``src/Level07/DB.hs``
 3) ``src/Level07/Core.hs``

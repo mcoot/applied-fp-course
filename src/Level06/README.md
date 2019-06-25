@@ -9,6 +9,7 @@ packages. There may also be, depending on your level of interest, some external
 reading for later as well.
 
 The steps for this level:
+
 1) ``src/Level06/AppM.hs``
 2) ``src/Level06/Types.hs``
 3) ``src/Level06/Conf/File.hs``

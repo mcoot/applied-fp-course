@@ -23,7 +23,7 @@ import           Network.HTTP.Types                 (Status, hContentType,
 
 import qualified Data.ByteString.Lazy               as LBS
 
-import           Data.Bifunctor                     (first)
+import qualified Data.Bifunctor as B
 import           Data.Either                        (either)
 import           Data.Monoid                        ((<>))
 
@@ -40,11 +40,14 @@ import           Level06.AppM                       (App, AppM (..),
                                                      liftEither, runApp)
 import qualified Level06.Conf                       as Conf
 import qualified Level06.DB                         as DB
-import           Level06.Types                      (Conf, ConfigError,
+import           Level06.Types                      (Conf(getConfDBFilePath, getConfPort), 
+                                                     DBFilePath(getDBFilePath),
+                                                     Port(getPort),
+                                                     ConfigError,
                                                      ContentType (..),
                                                      Error (..),
                                                      RqType (AddRq, ListRq, ViewRq),
-                                                     encodeComment, encodeTopic,
+                                                     confPortToWai, encodeComment, encodeTopic,
                                                      mkCommentText, mkTopic,
                                                      renderContentType)
 
@@ -57,7 +60,11 @@ data StartUpError
   deriving Show
 
 runApplication :: IO ()
-runApplication = error "copy your previous 'runApp' implementation and refactor as needed"
+runApplication = do
+  cfgE <- runAppM $ prepareAppReqs
+  case cfgE of
+    Left err   -> putStrLn $ show err
+    Right (cfg, db) -> Ex.finally (run (confPortToWai cfg) (app cfg db)) (DB.closeDB db)
 
 -- | We need to complete the following steps to prepare our app requirements:
 --
@@ -72,7 +79,12 @@ runApplication = error "copy your previous 'runApp' implementation and refactor 
 -- up!
 --
 prepareAppReqs :: AppM StartUpError (Conf, DB.FirstAppDB)
-prepareAppReqs = error "copy your prepareAppReqs from the previous level."
+prepareAppReqs = do
+  cfg <- B.first ConfErr (Conf.parseOptions "files/appconfig.json")
+  dbE <- liftIO $ B.first DBInitErr <$> (DB.initDB (getDBFilePath $ getConfDBFilePath cfg))
+  case dbE of
+    Left err -> throwError err
+    Right db -> return (cfg, db)
 
 -- | Some helper functions to make our lives a little more DRY.
 mkResponse
