@@ -44,14 +44,15 @@ import           Level07.Types                      (Conf, ConfigError,
                                                      Error (..), RqType (..),
                                                      confPortToWai,
                                                      encodeComment, encodeTopic,
-                                                     mkCommentText, mkTopic)
+                                                     mkCommentText, mkTopic, 
+                                                     dbFilePath)
 
 import           Level07.AppM                       (App, Env (..), liftEither,
                                                      runApp)
 
 -- | We're going to use the `mtl` ExceptT monad transformer to make the loading of
 -- our `Conf` a bit more straight-forward.
-import           Control.Monad.Except               (ExceptT (..), runExceptT)
+import           Control.Monad.Except               (ExceptT (..), runExceptT, throwError)
 
 -- | Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
@@ -83,7 +84,19 @@ runApplication = do
 -- 'mtl' on Hackage: https://hackage.haskell.org/package/mtl
 --
 prepareAppReqs :: ExceptT StartUpError IO Env
-prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
+prepareAppReqs = do
+  cfgE <- liftIO $ first ConfErr <$> (Conf.parseOptions "files/appconfig.json")
+  case cfgE of
+    Left err -> throwError err
+    Right cfg -> do
+      dbE <- liftIO $ first DBInitErr <$> (DB.initDB $ dbFilePath cfg)
+      case dbE of
+        Left err -> throwError err
+        Right db -> return $ Env {
+          envLoggingFn = \l -> liftIO $ putStrLn $ show l
+        , envConfig = cfg
+        , envDB = db
+        }
   -- You may copy your previous implementation of this function and try refactoring it. On the
   -- condition you have to explain to the person next to you what you've done and why it works.
 
@@ -94,8 +107,10 @@ prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
 app
   :: Env
   -> Application
-app =
-  error "Copy your completed 'app' from the previous level and refactor it here"
+app env rq cb = runApp (handleRequest =<< mkRequest rq) env >>= cb . handleRespErr
+  where
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr = either mkErrorResponse id
 
 handleRequest
   :: RqType

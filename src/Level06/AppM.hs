@@ -71,7 +71,7 @@ instance Monad (AppM e) where
   
 instance MonadIO (AppM e) where
   liftIO :: IO a -> AppM e a
-  liftIO = AppM . ((flip (>>=)) (return . Right))
+  liftIO = AppM . ((=<<) (return . Right))
 
 instance MonadError e (AppM e) where
   throwError :: e -> AppM e a
