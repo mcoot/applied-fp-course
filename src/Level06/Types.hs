@@ -243,7 +243,7 @@ partialConfDecoder :: Monad f => Decoder f PartialConf
 partialConfDecoder = D.withCursor $ \curs -> do
   io <- D.down curs
   PartialConf
-    <$> (Last <$> D.fromKeyOptional "Port" (Port . fromIntegral <$> D.int) io)
-    <*> (Last <$> D.fromKeyOptional "DBFilePath" (DBFilePath <$> D.string) io)
+    <$> (Last <$> D.fromKeyOptional "port" (Port . fromIntegral <$> D.int) io)
+    <*> (Last <$> D.fromKeyOptional "dbName" (DBFilePath <$> D.string) io)
 
 -- Go to 'src/Level06/Conf/File.hs' next
