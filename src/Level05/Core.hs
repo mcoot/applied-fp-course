@@ -8,6 +8,7 @@ module Level05.Core
 
 import qualified Control.Exception                  as Ex
 import           Control.Monad.IO.Class             (liftIO)
+import qualified Data.Bifunctor as B
 
 import           Network.Wai                        (Application, Request,
                                                      Response, pathInfo,
@@ -58,13 +59,13 @@ runApp = do
   case cfgE of
     Left err   ->
       -- We can't run our app at all! Display the message and exit the application.
-      undefined
+      putStrLn $ show err
     Right cfg ->
       -- We have a valid config! We can now complete the various pieces needed to run our
       -- application. This function 'finally' will execute the first 'IO a', and then, even in the
       -- case of that value throwing an exception, execute the second 'IO b'. We do this to ensure
       -- that our DB connection will always be closed when the application finishes, or crashes.
-      Ex.finally (run undefined undefined) (DB.closeDB cfg)
+      Ex.finally (run 3000 (app cfg)) (DB.closeDB cfg)
 
 -- We need to complete the following steps to prepare our app requirements:
 --
@@ -75,8 +76,9 @@ runApp = do
 --
 prepareAppReqs
   :: IO ( Either StartUpError DB.FirstAppDB )
-prepareAppReqs =
-  error "copy your prepareAppReqs from the previous level."
+prepareAppReqs = do
+  result <- DB.initDB (Conf.dbFilePath Conf.firstAppConfig)
+  return $ B.first (\err -> DBInitErr err) result
 
 -- | Some helper functions to make our lives a little more DRY.
 mkResponse
@@ -130,8 +132,12 @@ resp200Json e =
 app
   :: DB.FirstAppDB
   -> Application
-app db rq cb =
-  error "app not reimplemented"
+app db rq cb = do
+  resp <- runAppM $ (mkRequest rq) >>= (handleRequest db)
+  cb (handleRespErr resp)
+  where
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr = either mkErrorResponse id
 
 handleRequest
   :: DB.FirstAppDB
